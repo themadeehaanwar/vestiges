@@ -73,7 +73,7 @@ const Sound = (() => {
     },
     chimes() {
       const out = gain(0);
-      const scale = [523, 587, 659, 784, 880, 1047, 1175];
+      const scale = [523, 587, 659, 784, 880, 1047];
       const t = setInterval(() => { if (Math.random() < .65) bell(out, scale[Math.floor(Math.random() * scale.length)], .05); }, 900);
       const pad = ctx.createOscillator(); pad.frequency.value = 261.6; const pg = gain(0.01); chain(pad, pg, out); pad.start();
       return { out, nodes: [pad], timers: [t] };
@@ -84,6 +84,19 @@ const Sound = (() => {
       const t = setInterval(() => { if (Math.random() < .4) bell(out, [1568, 1760, 2093, 2349][Math.floor(Math.random() * 4)], .025); }, 1100);
       const t2 = setInterval(() => { if (Math.random() < .6) click(out, .03); }, 140);
       return { out, nodes: pads, timers: [t, t2] };
+    },
+    room() {
+      const out = gain(0);
+      const n = noise(true), lp = filt('lowpass', 320), g = gain(0.1); chain(n, lp, g, out);
+      const h = noise(), hp = filt('highpass', 5000), hg = gain(0.004); chain(h, hp, hg, out);
+      const l = lfo(0.05, 0.04, g.gain);
+      return { out, nodes: [n, h, l] };
+    },
+    sleep() {
+      const out = gain(0);
+      const n = noise(true), lp = filt('lowpass', 520), g = gain(0.12); chain(n, lp, g, out);
+      const l = lfo(0.18, 0.1, g.gain); const l2 = lfo(0.18, 180, lp.frequency); // slow breathing
+      return { out, nodes: [n, l, l2] };
     },
     fire() {
       const out = gain(0);
@@ -107,8 +120,8 @@ const Sound = (() => {
     const o = ctx.createOscillator(); const g = gain(0); chain(o, g, dest); const t = now() + delay;
     o.frequency.setValueAtTime(90, t); o.frequency.exponentialRampToValueAtTime(38, t + .18); env(g, .5 * v, .008, .22, t); o.start(t); o.stop(t + .3);
   }
-  function bell(dest, f, v) {
-    [1, 2.76, 5.4].forEach((m, i) => { const o = ctx.createOscillator(); const g = gain(0); chain(o, g, dest); o.frequency.value = f * m; const t = now(); env(g, v / (i + 1), .005, 2.4 / (i + 1), t); o.start(t); o.stop(t + 3); });
+  function bell(dest, f, v) { // warm music-box tone (harmonic, not eerie)
+    [1, 2, 3].forEach((m, i) => { const o = ctx.createOscillator(); const g = gain(0); chain(o, g, dest); o.frequency.value = f * m; const t = now(); env(g, v / (i * 2 + 1), .004, 1.6 / (i + 1), t); o.start(t); o.stop(t + 2); });
   }
   function softNote(dest, f, dur, v) {
     const o = ctx.createOscillator(); o.type = 'triangle'; const lp = filt('lowpass', 900); const g = gain(0); chain(o, lp, g, dest);
@@ -132,11 +145,36 @@ const Sound = (() => {
   }
   function pageTurn() {
     if (!ctx || !on) return;
-    const s = ctx.createBufferSource(); s.buffer = noiseBuf; const bp = filt('bandpass', 1800, .7); const g = gain(0);
-    chain(s, bp, g, master); const t = now();
-    bp.frequency.setValueAtTime(900, t); bp.frequency.exponentialRampToValueAtTime(4200, t + .35);
-    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.35, t + .06); g.gain.linearRampToValueAtTime(.12, t + .25); g.gain.exponentialRampToValueAtTime(.0001, t + .55);
-    s.start(t, Math.random(), .6);
+    const r = (a, b) => a + Math.random() * (b - a), t = now();
+    const dur = r(.32, .7), f0 = r(500, 1300), f1 = r(2400, 5800), peak = r(.18, .38);
+    const s = ctx.createBufferSource(); s.buffer = Math.random() < .5 ? noiseBuf : brownBuf; s.playbackRate.value = r(.8, 1.25);
+    const bp = filt('bandpass', f0, r(.5, 1.2)); const g = gain(0); chain(s, bp, g, master);
+    bp.frequency.setValueAtTime(f0, t); bp.frequency.exponentialRampToValueAtTime(f1, t + dur * .6);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + r(.03, .1)); g.gain.linearRampToValueAtTime(peak * r(.2, .5), t + dur * .5); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    s.start(t, Math.random() * 2, dur + .1);
+    const crinkles = Math.floor(r(2, 7)); // paper crackle grains
+    for (let k = 0; k < crinkles; k++) setTimeout(() => click(master, r(.03, .09), r(1500, 4000)), r(0, dur * 900));
+    if (Math.random() < .6) setTimeout(() => { // soft landing of the page
+      const n = ctx.createBufferSource(); n.buffer = brownBuf; const lp = filt('lowpass', r(250, 500)); const gg = gain(0); chain(n, lp, gg, master);
+      const t2 = now(); env(gg, r(.15, .3), .01, .18, t2); n.start(t2, Math.random(), .3);
+    }, dur * 800);
+  }
+  function touch(kind) {
+    if (!ctx || !on) return;
+    const t = now(), r = (a, b) => a + Math.random() * (b - a);
+    if (kind === 'ink') { // a muffled blot
+      const n = ctx.createBufferSource(); n.buffer = brownBuf; const lp = filt('lowpass', r(300, 600)); const g = gain(0); chain(n, lp, g, master);
+      env(g, .5, .005, .25, t); n.start(t, Math.random(), .35); thump(master, 0, .35); return;
+    }
+    if (kind === 'bloom') { // airy unfurling swish
+      const n = ctx.createBufferSource(); n.buffer = noiseBuf; const bp = filt('bandpass', 400, 1.4); const g = gain(0); chain(n, bp, g, master);
+      bp.frequency.setValueAtTime(350, t); bp.frequency.exponentialRampToValueAtTime(1800, t + .9);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.08, t + .4); g.gain.linearRampToValueAtTime(0, t + 1.1); n.start(t, Math.random(), 1.2);
+    }
+    // soft felt-piano pluck
+    const f = [196, 220, 262, 294, 330, 392][Math.floor(Math.random() * 6)];
+    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = f; const lp = filt('lowpass', 750); const g = gain(0); chain(o, lp, g, master);
+    env(g, .1, .006, .7, t); o.start(t); o.stop(t + .8);
   }
   function sparkle() { if (ctx && on) bell(master, [1047, 1319, 1568, 2093][Math.floor(Math.random() * 4)], .04); }
   function setOn(v) {
@@ -146,5 +184,5 @@ const Sound = (() => {
     master.gain.linearRampToValueAtTime(v ? 0.9 : 0, now() + 0.8);
     if (v) { current = null; setAmbient(currentName); } else { const c = current; current = null; setTimeout(() => stopAmb(c), 800); }
   }
-  return { setOn, isOn: () => on, setAmbient, pageTurn, sparkle };
+  return { setOn, isOn: () => on, setAmbient, pageTurn, sparkle, touch };
 })();

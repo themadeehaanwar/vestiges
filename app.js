@@ -21,6 +21,7 @@
 
   const stage = $('#stage'), book = $('#book'), scene = $('#scene');
   const fx = new FX($('#fxBack'), $('#fxFront'));
+  fx.rect = () => book.getBoundingClientRect();
   let idx = 0, leaf = null, anim = null, poemShown = -2, bgFlip = false, turnedOnce = false;
 
   /* ---------- INTRO ---------- */
@@ -58,23 +59,41 @@
       const p = POEMS[pg.pi];
       front = `<div class="face front"><img src="${pg.src}" alt="${p.title} — moodboard ${pg.si + 1}" draggable="false"><div class="sheen"></div>${i === 0 && !turnedOnce ? '<div class="curl"></div>' : ''}<div class="cast"></div><div class="shade"></div></div>`;
     } else {
-      const more = (SITE.more || []).map(m => `<a class="soft" href="${m.url}" target="_blank" rel="noopener">${m.label}</a>`).join('');
       front = `<div class="face front endpage">
-        <div><div class="theend">the end — or the beginning</div><div class="sub">this journey ran in reverse, like my book</div></div>
-        <div class="bk"><div class="cover"><div><div class="t1">VESTIGES</div><div class="t2">Poetry from the Ashes</div></div><div class="ash"></div><div class="t3">MADEEHA ANWAR</div></div></div>
-        <p class="blurb">Vestiges — my first collection. Poems of intensity, of longing that does not fade, of everything that was too much to keep inside.</p>
-        <div class="row"><a href="${SITE.amazon}" target="_blank" rel="noopener">find Vestiges ↗</a>${SITE.instagram ? `<a class="soft" href="${SITE.instagram}" target="_blank" rel="noopener">instagram</a>` : ''}${more}<button class="linkbtn soft" data-restart>↺ start again</button></div>
-        <p class="quote">“I don’t write poetry as a pastime — I write it because I have to.”</p>
-        <a class="mail soft" href="mailto:${SITE.email}" style="background:none;box-shadow:none;border:0;color:#efe2c8">${SITE.email}</a>
+        <div class="ty">thank you<br>for reading</div>
+        <p class="blurb">for wandering through everything that was too much to keep inside.</p>
+        <div class="sig2">Madeeha A.</div>
+        <div class="contact"><a href="tel:+91${SITE.phone}">${SITE.phone}</a><a href="mailto:${SITE.email}">${SITE.email}</a></div>
+        <button class="again" data-restart>↺ start again</button>
         <div class="cast"></div><div class="shade"></div></div>`;
     }
     el.innerHTML = front + '<div class="face back"></div>';
     const r = el.querySelector('[data-restart]'); if (r) r.addEventListener('click', e => { e.stopPropagation(); goTo(0); });
     return el;
   }
+  const STRIPS = 22;
+  function makeCurlLeaf(i) { // the page as thin strips, so it can bend like paper
+    const pg = pages[i]; if (pg.type !== 'slide') return makeLeaf(i);
+    const el = document.createElement('div'); el.className = 'leaf curly';
+    const W = book.offsetWidth, H = book.offsetHeight, w = W / STRIPS; let parent = el; el.strips = [];
+    for (let k = 0; k < STRIPS; k++) {
+      const st = document.createElement('div'); st.className = 'strip';
+      st.style.width = w + 'px'; st.style.left = k ? w + 'px' : '0px';
+      st.innerHTML = `<div class="sf" style="background-image:url(${pg.src});background-size:${W}px ${H}px;background-position:${-k * w}px 0"><i></i></div><div class="sb"><i></i></div>`;
+      parent.appendChild(st); parent = st; el.strips.push(st);
+    }
+    return el;
+  }
   function setAngle(a) {
     const { top, under } = anim;
-    top.style.transform = `rotateY(${-a}deg) skewY(${Math.sin(a * Math.PI / 180) * -1.5}deg)`;
+    if (top.strips) {
+      const curl = Math.sin(a * Math.PI / 180) * 42 * (anim.dir > 0 ? 1 : -1), N = top.strips.length; let prev = 0;
+      top.strips.forEach((st, k) => {
+        const th = a + curl * Math.pow(k / (N - 1), 2.2);
+        st.style.transform = `rotateY(${-(th - prev)}deg)`; prev = th;
+        st.style.setProperty('--l', ((1 - Math.abs(Math.cos(th * Math.PI / 180))) * .5).toFixed(3));
+      });
+    } else top.style.transform = `rotateY(${-a}deg)`;
     top.style.setProperty('--shade', (Math.sin(a * Math.PI / 180) * .9).toFixed(3));
     under.style.setProperty('--cast', ((1 - a / 180) * .9 * (a > 0 ? 1 : 0)).toFixed(3));
   }
@@ -83,22 +102,23 @@
   function begin(target) {
     if (anim || target === idx) return false;
     if (target < 0 || target >= pages.length) { book.classList.remove('bump'); void book.offsetWidth; book.classList.add('bump'); return false; }
-    const dir = target > idx ? 1 : -1, nl = makeLeaf(target);
-    if (dir > 0) { book.insertBefore(nl, leaf); anim = { dir, target, top: leaf, under: nl, a: 0, from: 0, to: 180 }; }
-    else { book.appendChild(nl); anim = { dir, target, top: nl, under: leaf, a: 180, from: 180, to: 0 }; }
+    const dir = target > idx ? 1 : -1;
+    if (dir > 0) { const cur = makeCurlLeaf(idx), nl = makeLeaf(target); book.replaceChild(cur, leaf); book.insertBefore(nl, cur); leaf = cur; anim = { dir, target, top: cur, under: nl, a: 0, from: 0, to: 180 }; }
+    else { const nl = makeCurlLeaf(target); book.appendChild(nl); anim = { dir, target, top: nl, under: leaf, a: 180, from: 180, to: 0 }; }
     anim.top.style.zIndex = 2; anim.under.style.zIndex = 1;
     setAngle(anim.a);
     return true;
   }
   function settle(commit) {
-    const A = anim, end = commit ? A.to : A.from, start = A.a, t0 = performance.now(), dur = 520 * Math.abs(end - start) / 180 + 120;
+    const A = anim, end = commit ? A.to : A.from, start = A.a, t0 = performance.now(), dur = 750 * Math.abs(end - start) / 180 + 150;
     if (commit) { Sound.pageTurn(); if (pages[A.target].pi !== pages[idx].pi) applyPage(A.target); }
     const tick = now => {
       const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
       A.a = start + (end - start) * e; setAngle(A.a);
       if (k < 1) return requestAnimationFrame(tick);
-      const keep = commit ? (A.dir > 0 ? A.under : A.top) : (A.dir > 0 ? A.top : A.under);
+      let keep = commit ? (A.dir > 0 ? A.under : A.top) : (A.dir > 0 ? A.top : A.under);
       [A.top, A.under].forEach(l => { if (l !== keep) l.remove(); });
+      if (keep.strips) { const flat = makeLeaf(commit ? A.target : idx); book.replaceChild(flat, keep); keep = flat; }
       keep.style.transform = ''; keep.style.zIndex = 1; keep.style.setProperty('--cast', 0); keep.style.setProperty('--shade', 0);
       leaf = keep; anim = null;
       if (commit) { idx = A.target; applyPage(idx); preload(); if (!turnedOnce) { turnedOnce = true; $('#turnHint').classList.add('hide'); } }
@@ -130,7 +150,7 @@
     if (!drag || e.pointerId !== drag.id) return;
     const d = drag; drag = null;
     if (!d.started) { // a tap → magic
-      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 10) { fx.burst(e.clientX, e.clientY); Sound.sparkle(); }
+      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 10) { fx.burst(e.clientX, e.clientY); const f = fx.mood.fx || []; Sound.touch(f.includes('stains') ? 'ink' : f.includes('blooms') ? 'bloom' : 'pluck'); }
       return;
     }
     const prog = anim.dir > 0 ? anim.a / 180 : 1 - anim.a / 180;
@@ -177,12 +197,13 @@
     stage.style.setProperty('--bg', m.bg); stage.style.setProperty('--accent', m.accent);
     stage.style.setProperty('--grunge', m.grunge || 0);
     stage.classList.toggle('dark', (m.grunge || 0) >= .6);
+    stage.classList.toggle('drowsy', !!m.drowsy);
     document.querySelector('meta[name=theme-color]').content = m.bg;
     fx.setMood(m); Sound.setAmbient(m.sound);
     // title tag
     const tt = $('#titleTag'); tt.classList.add('swap');
     setTimeout(() => {
-      $('#poemTitle').textContent = isEnd ? 'Vestiges' : poem.title;
+      $('#poemTitle').textContent = isEnd ? 'the end' : poem.title;
       tear(tt, 8); tt.classList.remove('swap');
     }, 280);
     $('#poemNum').textContent = isEnd ? '' : `${String(pi + 1).padStart(2, '0')} / ${String(POEMS.length).padStart(2, '0')}`;

@@ -6,22 +6,21 @@
    ---------------------------------------------------------
    mood.fx options (mix freely):
      butterflies, moths, petals, flowers, dust, stars, rain,
-     embers, bubbles, sparkles, stains, fog, clouds, rays, scratches
+     embers, bubbles, sparkles, stains, fog, clouds, rays, scratches,
+     blooms (tap to grow big flowers that wilt)
+   mood.flower: "ixora" for ixora clusters · mood.petal: "floret"
+   mood.flyColors: butterfly wing colours · mood.drowsy: slow sleepy blinks
    mood.sound options:
-     ocean, rain, wind, vinyl, heartbeat, chimes, night, fire, drone
+     ocean, rain, wind, vinyl, heartbeat, chimes, night, fire, drone, room, sleep
    mood.grunge: 0 (clean) → 1 (full grunge, flicker, grain)
    mood.note: the explanation shown under "the note" (leave "" to hide)
    ========================================================= */
 
 const SITE = {
-  name: "Madeeha Anwar",
+  name: "Madeeha A.",
   tagline: "poems, moodboards & everything that was too much to keep inside",
   email: "themadeehaanwar@gmail.com",
-  instagram: "",          // e.g. "https://instagram.com/yourhandle"
-  amazon: "https://www.amazon.com/s?k=Vestiges+Poetry+from+the+Ashes+Madeeha+Anwar",
-  more: [                 // other beauty work — add as many as you like
-    // { label: "Fivian", url: "https://..." },
-  ],
+  phone: "7595868655",
 };
 
 const POEMS = [
@@ -52,44 +51,44 @@ const POEMS = [
   {
     id: "ixora", title: "Ixora", date: "May 2026",
     slides: ["ixora-1"],
-    mood: { bg: "#f08a3a", accent: "#ffd27a", fx: ["petals", "butterflies", "rays"], colors: ["#ff5a2c", "#ffb347", "#ffe08a"], grunge: 0, sound: "wind" },
-    note: "",
-  },
-  {
-    id: "belching", title: "belching", date: "Apr 2026",
-    slides: ["belching-1"],
-    mood: { bg: "#1b140c", accent: "#c9a66b", fx: ["dust", "moths", "stains", "scratches"], colors: ["#6b4a2a", "#c9a66b"], stain: "#4a2f14", grunge: 0.8, sound: "drone" },
+    mood: { bg: "#f08a3a", accent: "#ffd27a", fx: ["flowers", "petals", "butterflies", "rays"], flower: "ixora", petal: "floret", colors: ["#ff3b1f", "#ff5a2c", "#ff7a35"], flyColors: ["#ffb347", "#ffd27a"], grunge: 0, sound: "wind" },
     note: "",
   },
   {
     id: "theology", title: "A Theology of You", date: "Dec 2025",
     slides: ["theology-1", "theology-2", "theology-3", "theology-4", "theology-5", "theology-6"],
-    mood: { bg: "#f4f1ea", accent: "#9a7b2f", fx: ["dust", "sparkles", "stars"], colors: ["#c9a14a", "#e8d39a"], grunge: 0, sound: "chimes" },
+    mood: { bg: "#f4f1ea", accent: "#9a7b2f", fx: ["dust", "sparkles"], colors: ["#c9a14a", "#e8d39a"], grunge: 0, sound: "room" },
     note: "",
   },
   {
     id: "pastelpink", title: "Pastel Pink", date: "Nov 2025",
     slides: ["pastelpink-1"],
-    mood: { bg: "#f7c9dc", accent: "#e0568c", fx: ["clouds", "sparkles", "petals", "butterflies"], colors: ["#ffffff", "#ffd1e3", "#ff9ec4"], grunge: 0, sound: "chimes" },
+    mood: { bg: "#f7c9dc", accent: "#e0568c", fx: ["clouds", "sparkles", "petals", "butterflies"], colors: ["#ffffff", "#ffd1e3", "#ff9ec4"], flyColors: ["#ff8fbf", "#f59cc8", "#e86fa6", "#ffb3d6"], grunge: 0, sound: "chimes" },
     note: "",
   },
   {
     id: "flowers", title: "Flowers", date: "May 2025",
     slides: ["flowers-1"],
-    mood: { bg: "#d9b8e6", accent: "#8b4fa6", fx: ["petals", "flowers", "butterflies"], colors: ["#f6d4e8", "#ffffff", "#c99be0"], grunge: 0, sound: "wind" },
+    mood: { bg: "#d9b8e6", accent: "#8b4fa6", fx: ["blooms", "petals", "butterflies"], colors: ["#f2a7c9", "#e88fb8", "#c99be0", "#f6d4e8"], flyColors: ["#b57ad1", "#f2a7c9"], grunge: 0, sound: "wind" },
+    note: "Sometimes, love sits too long in your chest with nowhere to go.\n\nThe ache of withheld tenderness grows heavier like the slow rot of something beautiful that stayed too long in your hands.",
+  },
+  {
+    id: "belching", title: "belching", date: "Apr 2025",
+    slides: ["belching-1"],
+    mood: { bg: "#1b140c", accent: "#c9a66b", fx: ["dust", "moths", "stains", "scratches"], colors: ["#6b4a2a", "#c9a66b"], stain: "#4a2f14", grunge: 0.8, sound: "drone" },
     note: "",
   },
   {
     id: "shutter", title: "Shutter", date: "Apr 2025",
     slides: ["shutter-1"],
-    mood: { bg: "#151515", accent: "#bbbbbb", fx: ["dust", "scratches", "fog"], colors: ["#cccccc", "#777777"], grunge: 1, sound: "drone" },
+    mood: { bg: "#151515", accent: "#bbbbbb", fx: ["dust", "fog"], colors: ["#cccccc", "#777777"], grunge: 0.4, drowsy: true, sound: "sleep" },
     note: "",
   },
   {
     id: "yellowcanvas", title: "Yellow Canvas", date: "Apr 2025",
     slides: ["yellowcanvas-1"],
     mood: { bg: "#e9d27a", accent: "#8a6d12", fx: ["dust", "rays", "stains"], colors: ["#fff3b0", "#d9b440"], stain: "#a3842a", grunge: 0.35, sound: "wind" },
-    note: "",
+    note: "This is a collection of moments I've witnessed - of my grandmother slowly aging. Starting with the moment that set me up for a truth unfolding which I was not ready to witness.\n\nFrom the first painful visual of my grandmother that I cannot shake from my memory. She lay on the patient canvas stretched out, yet paradoxically shrunken. Her empty eyes fixated in mine as her sons and paramedics blurred into my vision turning into nothing more than looming vertical shapes which now I can only recall as \"pillars\" with the whole world around her as large as life threatening to collapse.\n\nHer eyes, as if hollow and finally refusing to recognise me. I see her eyes getting lost behind layers of almost glass - like cataract - greyer every time I visit her. Her skin loose, flesh disappearing, as her body becomes less a vessel for life and more an encasing shell.\n\nWhen she came back from the hospital, I remember her frail bony fingers hugging her face trying desperately to hold her pain. Her body shrunken evermore, dissolving into the smallest of chairs - dissolving under the lightest of sheets.",
   },
   {
     id: "wraith", title: "Wraith", date: "Mar 2025",

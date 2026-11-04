@@ -26,7 +26,8 @@ class FX {
   glow(color, r = 32) {
     const key = color + r; if (this.sprites[key]) return this.sprites[key];
     const c = document.createElement('canvas'); c.width = c.height = r * 2; const x = c.getContext('2d');
-    const g = x.createRadialGradient(r, r, 0, r, r, r); g.addColorStop(0, color); g.addColorStop(.25, color); g.addColorStop(1, 'rgba(0,0,0,0)');
+    const n = parseInt(color.slice(1), 16), clear = color[0] === '#' ? `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},0)` : 'rgba(255,255,255,0)';
+    const g = x.createRadialGradient(r, r, 0, r, r, r); g.addColorStop(0, color); g.addColorStop(.25, color); g.addColorStop(1, clear);
     x.globalAlpha = 1; x.fillStyle = g; x.beginPath(); x.arc(r, r, r, 0, 7); x.fill();
     return (this.sprites[key] = c);
   }
@@ -61,10 +62,16 @@ class FX {
       }, 2600);
       setTimeout(() => this.addStain(), 600);
     }
+    if (fx.includes('blooms')) {
+      this.timers.creep = setInterval(() => { // they keep growing, slowly crowding in
+        if (this.ps.filter(p => p.kind === 'bloom' && !p.dying).length < 9) this.bloomAt(null, null);
+      }, 5200);
+      setTimeout(() => this.bloomAt(null, null), 900);
+    }
     if (fx.includes('flowers') && fx.includes('petals')) {
       this.timers.shed = setInterval(() => {
         const f = this.pick(this.ps.filter(p => p.kind === 'flower' && !p.dying)); if (!f) return;
-        const p = this.newPetal(false); p.x = f.hx; p.y = f.hy; p.c = '#ffffff'; this.ps.push(Object.assign({ kind: 'petal', a: 0, life: 0 }, p));
+        const p = this.newPetal(false); p.x = f.hx; p.y = f.hy; p.c = this.mood.flower === 'ixora' ? this.col() : '#ffffff'; this.ps.push(Object.assign({ kind: 'petal', a: 0, life: 0 }, p));
       }, 3500);
     }
   }
@@ -76,10 +83,10 @@ class FX {
     p.sz = Math.max(10, Math.min(20, this.W / 70)) * this.rnd(.85, 1.2);
   }
   newFly(moth) {
-    const s = moth ? this.rnd(7, 11) : this.rnd(10, 17);
+    const s = moth ? this.rnd(7, 11) : this.rnd(13, 20);
     return { x: this.rnd(0, this.W), y: this.rnd(0, this.H), h: this.rnd(0, 7), sp: moth ? this.rnd(60, 110) : this.rnd(40, 80), s, moth,
       fph: this.rnd(0, 7), fs: moth ? this.rnd(22, 30) : this.rnd(9, 13), tx: this.rnd(0, this.W), ty: this.rnd(0, this.H), tt: 0,
-      c: moth ? this.pick(['#5a4636', '#7a6450', '#3d3028']) : this.col(), c2: moth ? '#2a1e16' : null, layer: 1 };
+      c: moth ? this.pick(['#5a4636', '#7a6450', '#3d3028']) : this.pick(this.mood.flyColors || this.mood.colors || ['#fff']), c2: moth ? '#2a1e16' : null, layer: 1 };
   }
   newPetal(anywhere) {
     return { x: this.rnd(-50, this.W), y: anywhere ? this.rnd(-this.H, this.H) : -20, vy: this.rnd(22, 55), s: this.rnd(5, 11),
@@ -107,8 +114,9 @@ class FX {
 
   burst(x, y) {
     const fx = (this.mood && this.mood.fx) || [];
-    for (let i = 0; i < 9; i++) { const s = this.newSpark(x + this.rnd(-30, 30), y + this.rnd(-30, 30)); s.vx = this.rnd(-60, 60); s.vy = this.rnd(-80, 10); this.ps.push(Object.assign({ kind: 'spark', a: 1, life: 0, once: true }, s)); }
-    if (fx.includes('petals')) for (let i = 0; i < 10; i++) { const p = this.newPetal(false); p.x = x; p.y = y; p.vx0 = this.rnd(-140, 140); p.vy = this.rnd(-60, 30); this.ps.push(Object.assign({ kind: 'petal', a: 1, life: 0, once: true }, p)); }
+    for (let i = 0; i < 4; i++) { const s = this.newSpark(x + this.rnd(-30, 30), y + this.rnd(-30, 30)); s.s *= .7; s.vx = this.rnd(-60, 60); s.vy = this.rnd(-80, 10); this.ps.push(Object.assign({ kind: 'spark', a: 1, life: 0, once: true }, s)); }
+    if (fx.includes('blooms')) this.bloomAt(x, y);
+    if (fx.includes('petals')) for (let i = 0; i < (fx.includes('blooms') ? 4 : 10); i++) { const p = this.newPetal(false); p.x = x; p.y = y; p.vx0 = this.rnd(-140, 140); p.vy = this.rnd(-60, 30); this.ps.push(Object.assign({ kind: 'petal', a: 1, life: 0, once: true }, p)); }
     if ((fx.includes('butterflies') || fx.includes('moths')) && this.ps.filter(p => p.kind === 'fly').length < 16) {
       const b = this.newFly(fx.includes('moths') && !fx.includes('butterflies')); b.x = x; b.y = y; b.h = this.rnd(0, 7); this.ps.push(Object.assign({ kind: 'fly', a: 0, life: 0, once: true }, b));
     }
@@ -151,15 +159,91 @@ class FX {
     const s = p.s, open = .18 + .82 * Math.abs(flap);
     for (const side of [1, -1]) {
       x.save(); x.scale(side * open, 1);
-      const g = x.createLinearGradient(0, 0, s * 1.2, 0); g.addColorStop(0, p.c2 || this.shade(p.c, -.25)); g.addColorStop(1, p.c);
-      x.fillStyle = g; x.strokeStyle = 'rgba(0,0,0,.35)'; x.lineWidth = .6;
+      const g = x.createLinearGradient(0, 0, s * 1.25, 0); g.addColorStop(0, p.c2 || this.shade(p.c, -.35)); g.addColorStop(.6, p.c); g.addColorStop(1, p.moth ? p.c : this.shade(p.c, -.5));
+      x.fillStyle = g; x.strokeStyle = p.moth ? 'rgba(0,0,0,.35)' : this.shade(p.c, -.6); x.lineWidth = p.moth ? .6 : .9;
       x.beginPath(); x.moveTo(0, -s * .1); x.bezierCurveTo(s * .5, -s * 1.25, s * 1.35, -s * 1.05, s * 1.05, -s * .05); x.quadraticCurveTo(s * .6, s * .05, 0, 0); x.fill(); x.stroke();
       x.beginPath(); x.moveTo(0, s * .05); x.bezierCurveTo(s * .95, s * .1, s * .9, s * .85, s * .35, s * .8); x.quadraticCurveTo(s * .1, s * .5, 0, s * .2); x.fill(); x.stroke();
-      if (!p.moth) { x.fillStyle = 'rgba(255,255,255,.55)'; x.beginPath(); x.arc(s * .75, -s * .55, s * .12, 0, 7); x.fill(); }
+      if (!p.moth) { x.fillStyle = 'rgba(255,255,255,.8)'; x.beginPath(); x.arc(s * .85, -s * .62, s * .08, 0, 7); x.arc(s * 1.0, -s * .35, s * .06, 0, 7); x.fill(); x.fillStyle = this.shade(p.c, -.5); x.beginPath(); x.arc(s * .45, s * .45, s * .09, 0, 7); x.fill(); }
       x.restore();
     }
     x.fillStyle = p.moth ? '#20160f' : '#2b2118'; x.beginPath(); x.ellipse(0, s * .15, s * .09, s * .55, 0, 0, 7); x.fill();
     x.strokeStyle = x.fillStyle; x.lineWidth = .7; x.beginPath(); x.moveTo(0, -s * .35); x.quadraticCurveTo(-s * .2, -s * .8, -s * .35, -s * .9); x.moveTo(0, -s * .35); x.quadraticCurveTo(s * .2, -s * .8, s * .35, -s * .9); x.stroke();
+    x.restore();
+  }
+  floret(x, cx, cy, r, c, rot = 0) {
+    x.save(); x.translate(cx, cy); x.rotate(rot); x.fillStyle = c;
+    for (let i = 0; i < 4; i++) { x.rotate(Math.PI / 2); x.beginPath(); x.ellipse(0, -r * .55, r * .32, r * .55, 0, 0, 7); x.fill(); }
+    x.fillStyle = '#ffd34d'; x.beginPath(); x.arc(0, 0, r * .14, 0, 7); x.fill(); x.restore();
+  }
+  mix(a, b, t) {
+    const h = v => [parseInt(v.slice(1, 3), 16), parseInt(v.slice(3, 5), 16), parseInt(v.slice(5, 7), 16)];
+    const A = h(a), B = h(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')})`;
+  }
+  /* --- big flowers whose stems curl around the poem, then slowly wilt --- */
+  bloomAt(x, y) {
+    const b = this.rect ? this.rect() : { left: this.W * .3, top: this.H * .2, right: this.W * .7, bottom: this.H * .8 };
+    const L = b.left, T = b.top, Wd = b.right - b.left, Ht = b.bottom - b.top, P = 2 * (Wd + Ht);
+    const perim = s => { s = ((s % P) + P) % P;
+      if (s < Wd) return [L + s, T, 0, -1]; s -= Wd;
+      if (s < Ht) return [L + Wd, T + s, 1, 0]; s -= Ht;
+      if (s < Wd) return [L + Wd - s, T + Ht, 0, 1]; s -= Wd;
+      return [L, T + Ht - s, -1, 0]; };
+    if (x == null) { const s = this.rnd(0, P), [px, py, nx, ny] = perim(s), o = this.rnd(-30, 90); x = px + nx * o + this.rnd(-40, 40) * ny; y = py + ny * o + this.rnd(-40, 40) * nx; }
+    // nearest point on the page border
+    const cands = [[Math.max(L, Math.min(L + Wd, x)) - L, T], [Wd + Math.max(0, Math.min(Ht, y - T)), 0], [Wd + Ht + (L + Wd - Math.max(L, Math.min(L + Wd, x))), 0], [2 * Wd + Ht + (T + Ht - Math.max(T, Math.min(T + Ht, y))), 0]];
+    let s0 = 0, best = 1e9; for (const [s] of cands) { const [px, py] = perim(s), d = Math.hypot(px - x, py - y); if (d < best) { best = d; s0 = s; } }
+    const dir = Math.random() < .5 ? 1 : -1, len = this.rnd(140, 300), M = Math.round(len / 9), ph = this.rnd(0, 7), pts = [];
+    for (let j = 0; j <= M; j++) { const [px, py, nx, ny] = perim(s0 + dir * len * (1 - j / M)), o = 3 + Math.sin(j * .55 + ph) * 8; pts.push([px + nx * o, py + ny * o]); }
+    const [ax, ay] = pts[pts.length - 1], mx = (ax + x) / 2 + (y - ay) * .35 * dir, my = (ay + y) / 2 - (x - ax) * .35 * dir;
+    for (let j = 1; j <= 18; j++) { const u = j / 18; pts.push([(1 - u) ** 2 * ax + 2 * (1 - u) * u * mx + u * u * x, (1 - u) ** 2 * ay + 2 * (1 - u) * u * my + u * u * y]); }
+    const lens = [0]; for (let j = 1; j < pts.length; j++) lens.push(lens[j - 1] + Math.hypot(pts[j][0] - pts[j - 1][0], pts[j][1] - pts[j - 1][1]));
+    const tendrils = Array.from({ length: 3 }, () => ({ at: Math.floor(this.rnd(.1, .85) * pts.length), side: Math.random() < .5 ? 1 : -1, r: this.rnd(7, 13) }));
+    const live = this.ps.filter(p => p.kind === 'bloom' && !p.dying);
+    if (live.length >= 16) live[0].born -= 16; // oldest rots faster
+    this.ps.push({ kind: 'bloom', x, y, pts, lens, tendrils, born: this.t, R: this.rnd(30, 52) * Math.max(.75, Math.min(1.1, this.k)), n: Math.round(this.rnd(6, 9)), rot: this.rnd(0, 7), c: this.col(), a: 1, life: 0, layer: 1 });
+  }
+  bloom(p, dt, x) {
+    const age = this.t - p.born, grow = Math.min(1, age / 1.8), eg = 1 - (1 - grow) ** 3;
+    const open = Math.max(0, Math.min(1, (age - 1.3) / 1.4)), eo = 1 - (1 - open) ** 3;
+    const wilt = Math.max(0, Math.min(1, (age - 16) / 14));
+    let al = 1 - Math.max(0, Math.min(1, (age - 30) / 6)); if (p.dying) { p.a -= dt * .5; al *= Math.max(0, p.a); }
+    if (al <= 0) return false;
+    x.save(); x.globalAlpha = al; x.lineCap = 'round'; x.lineJoin = 'round';
+    const stem = this.mix('#4f7a34', '#7a6440', wilt), total = p.lens[p.lens.length - 1] * eg;
+    x.strokeStyle = stem; x.lineWidth = 2.8; x.beginPath(); x.moveTo(p.pts[0][0], p.pts[0][1]);
+    let last = 0;
+    for (let j = 1; j < p.pts.length && p.lens[j] <= total; j++) { x.lineTo(p.pts[j][0], p.pts[j][1]); last = j; }
+    x.stroke();
+    // leaves + tendrils along the grown part
+    x.fillStyle = this.mix('#5f8f3e', '#8a7348', wilt);
+    for (let j = 4; j <= last; j += 5) {
+      const [a0, b0] = p.pts[j - 1], [a1, b1] = p.pts[j], ang = Math.atan2(b1 - b0, a1 - a0) + (j % 10 ? .9 : -.9) + wilt * .6;
+      x.save(); x.translate(a1, b1); x.rotate(ang); x.beginPath(); x.ellipse(8, 0, 9, 3.6 * (1 - wilt * .4), 0, 0, 7); x.fill(); x.restore();
+    }
+    x.lineWidth = 1.2;
+    for (const td of p.tendrils) if (td.at <= last && td.at > 0) {
+      const [cx, cy] = p.pts[td.at]; x.beginPath();
+      for (let k = 0; k <= 30; k++) { const u = k / 30, a = u * Math.PI * 3 * td.side, r = td.r * (1 - u); const X = cx + td.side * td.r + Math.cos(a + Math.PI) * r, Y = cy + Math.sin(a + Math.PI) * r; k ? x.lineTo(X, Y) : x.moveTo(X, Y); }
+      x.stroke();
+    }
+    // the flower head
+    if (eo > 0) {
+      x.translate(p.x, p.y + wilt * 14); x.rotate(p.rot + wilt * .5);
+      const R = p.R * eo, col = this.mix(p.c.length === 7 ? p.c : '#f2a7c9', '#7d5f45', wilt * .9), droop = 1 - wilt * .35;
+      for (const ring of [[1, 0, 1], [.68, Math.PI / p.n, .85], [.42, 0, .7]]) {
+        for (let i = 0; i < p.n; i++) {
+          x.save(); x.rotate(i / p.n * Math.PI * 2 + ring[1] + Math.sin(this.t * .8 + i) * .02);
+          const pr = R * ring[0];
+          const g = x.createLinearGradient(0, 0, 0, -pr); g.addColorStop(0, this.shade(col.startsWith('#') ? col : '#c08aa0', -.3)); g.addColorStop(1, col);
+          x.fillStyle = col; x.globalAlpha = al * ring[2] + (1 - ring[2]) * al * .3;
+          x.beginPath(); x.moveTo(0, 0); x.bezierCurveTo(pr * .55, -pr * .3 * droop, pr * .45, -pr * droop, 0, -pr * droop); x.bezierCurveTo(-pr * .45, -pr * droop, -pr * .55, -pr * .3 * droop, 0, 0); x.fill();
+          x.globalAlpha = al * .25; x.strokeStyle = 'rgba(80,30,50,.6)'; x.lineWidth = .8; x.stroke();
+          x.restore();
+        }
+      }
+      x.globalAlpha = al; x.fillStyle = this.mix('#e9b52f', '#6b4a2a', wilt); x.beginPath(); x.arc(0, 0, R * .16, 0, 7); x.fill();
+      if (wilt > .2 && Math.random() < dt * .6) { const q = this.newPetal(false); q.x = p.x; q.y = p.y; q.c = this.mix(p.c, '#7d5f45', wilt); q.brown = true; this.ps.push(Object.assign({ kind: 'petal', a: 1, life: 0, once: true }, q)); }
+    }
     x.restore();
   }
   shade(hex, amt) {
@@ -173,6 +257,7 @@ class FX {
     p.x += (this.wind * 45 + Math.sin(this.t * p.fl + p.ph) * 22 + p.vx0) * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
     if (p.y > this.H + 30 || p.x > this.W + 60 || p.x < -80) { if (p.once || p.dying) return false; Object.assign(p, this.newPetal(false)); }
     x.save(); x.globalAlpha = p.a * .9; x.translate(p.x, p.y); x.rotate(p.rot); x.scale(1, Math.cos(this.t * p.fl * 1.3 + p.ph) * .8 + .2);
+    if (this.mood && this.mood.petal === 'floret' && !p.brown) { this.floret(x, 0, 0, p.s * .8, p.c); x.restore(); return; }
     x.fillStyle = p.c; x.beginPath(); x.moveTo(0, -p.s); x.bezierCurveTo(p.s * .9, -p.s * .5, p.s * .6, p.s * .8, 0, p.s); x.bezierCurveTo(-p.s * .6, p.s * .8, -p.s * .9, -p.s * .5, 0, -p.s); x.fill();
     x.globalAlpha *= .35; x.strokeStyle = '#000'; x.lineWidth = .5; x.beginPath(); x.moveTo(0, -p.s * .7); x.lineTo(0, p.s * .7); x.stroke();
     x.restore();
@@ -191,6 +276,12 @@ class FX {
     // head
     x.translate(hx, hy); x.rotate(sway * 1.6 + (p.side ? -.15 : .15));
     const s = p.sz, c = (this.mood.colors || ['#fff'])[0];
+    if (this.mood.flower === 'ixora') {
+      if (!p.fl) p.fl = Array.from({ length: 16 }, (_, j) => { const a = j * 2.4, r = Math.sqrt(j / 16) * s * 1.15; return { x: Math.cos(a) * r, y: Math.sin(a) * r * .8 - s * .2, c: this.col(), rot: Math.random() * 2 }; });
+      x.fillStyle = '#2f5a24'; for (const sd of [-1, 1]) { x.beginPath(); x.ellipse(sd * s * .9, s * .55, s * .95, s * .32, sd * .45, 0, 7); x.fill(); }
+      for (const f of p.fl) this.floret(x, f.x, f.y, s * .34, f.c, f.rot + Math.sin(this.t * 1.5 + f.rot) * .1);
+      x.restore(); return;
+    }
     for (let i = 0; i < p.petals; i++) {
       x.save(); x.rotate(i / p.petals * Math.PI * 2 + Math.sin(this.t * 2 + i) * .03);
       x.fillStyle = c; x.strokeStyle = 'rgba(0,0,0,.12)'; x.lineWidth = .6;
