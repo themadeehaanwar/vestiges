@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Madeeha Anwar</title>
+<meta name="description" content="Madeeha Anwar — poems as moodboards. A visual journey, newest to oldest.">
+<meta property="og:title" content="Madeeha Anwar">
+<meta property="og:description" content="poems, moodboards & everything that was too much to keep inside">
+<meta property="og:image" content="img/kiwi-1.webp">
+<meta name="theme-color" content="#0d0908">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Homemade+Apple&family=IM+Fell+English:ital@0;1&family=Special+Elite&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============ INTRO ============ -->
+<section id="intro">
+  <div class="collage" id="collage"></div>
+  <canvas class="fx" id="introFx"></canvas>
+  <div class="intro-card torn" id="introCard">
+    <span class="tape tape-tl"></span><span class="tape tape-tr"></span>
+    <p class="kicker">a visual journey · newest to oldest</p>
+    <h1 class="sig" id="introName">Madeeha Anwar</h1>
+    <p class="tagline" id="introTag"></p>
+    <div class="enter">
+      <button class="btn ink" data-enter="sound">enter with sound ♪</button>
+      <button class="btn ghost" data-enter="silent">enter in silence</button>
+    </div>
+    <p class="hint">swipe or drag the page to turn it · tap anywhere for a little magic</p>
+  </div>
+</section>
+
+<!-- ============ JOURNEY ============ -->
+<main id="stage" aria-live="polite">
+  <div class="bg"><div class="bgimg" id="bgA"></div><div class="bgimg" id="bgB"></div></div>
+  <canvas class="fx" id="fxBack"></canvas>
+
+  <header class="top">
+    <div class="titletag torn" id="titleTag"><span id="poemTitle"></span></div>
+    <div class="meta"><span id="poemNum"></span><span id="poemDate"></span></div>
+    <div class="dots" id="dots"></div>
+  </header>
+
+  <div class="scene" id="scene">
+    <div class="book" id="book"></div>
+  </div>
+
+  <canvas class="fx front" id="fxFront"></canvas>
+  <div class="grain"></div>
+  <div class="vignette"></div>
+
+  <button class="notebtn torn" id="noteBtn">✎ the note</button>
+  <button class="soundbtn" id="soundBtn" aria-label="toggle sound">♪</button>
+  <button class="arrow prev" id="prevBtn" aria-label="previous page">&#8592;</button>
+  <button class="arrow next" id="nextBtn" aria-label="next page">&#8594;</button>
+  <nav class="thread" id="thread" aria-label="poems"></nav>
+  <div class="turnhint" id="turnHint">drag the corner ← to turn the page</div>
+
+  <aside id="note" class="note" aria-hidden="true">
+    <div class="notepaper torn">
+      <button class="close" id="noteClose" aria-label="close">✕</button>
+      <h3 id="noteTitle"></h3>
+      <div id="noteBody"></div>
+      <p class="noteSig">— Madeeha</p>
+    </div>
+  </aside>
+</main>
+
+<script src="poems.js"></script>
+<script src="sound.js"></script>
+<script src="fx.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
